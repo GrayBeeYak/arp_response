@@ -21,8 +21,10 @@ module arp_response (input  ARESET,
   reg arp_req;
   reg [0:1] arp_req_tx;
   reg DATA_VALID_RX_Q;
-  reg [47:0] THIER_MAC;
-  reg [31:0] THIER_IPV4;
+  reg [47:0] THEIR_MAC;
+  reg [31:0] THEIR_IPV4;
+
+  reg [7:0] RX_CHECK;
 
   // FSM
   reg [3:0] rx_state;
@@ -64,14 +66,13 @@ module arp_response (input  ARESET,
   localparam PLN_VALUE           = 8'h04;
   localparam OP_VALUE            = 16'h0001;
 
-  reg [8:0] rx_check;
-
   // Check for ARP Request
   always @ (posedge CLK_RX)
   begin
     if(ARESET) begin
       rx_byte  <= 4'b0000;
       rx_state <= IDLE;
+      arp_req  <= 0;
     end else begin
       DATA_VALID_RX_Q <= DATA_VALID_RX;
       // Start parsing frame using edge detect
@@ -79,6 +80,7 @@ module arp_response (input  ARESET,
 
         IDLE:
         begin
+          arp_req       <= 0;
           if(DATA_VALID_RX == 1 && DATA_VALID_RX_Q == 0)
             rx_state <= DEST_MAC;
         end
@@ -87,7 +89,7 @@ module arp_response (input  ARESET,
         begin
           if(DATA_VALID_RX == 1) begin
             if (rx_byte == DEST_MAC_SIZE-2) begin
-              rx_byte  <= 4'b0000;
+              rx_byte  <= SRC_MAC_SIZE-1;
               rx_state <= SRC_MAC;
             end else
               rx_byte <= rx_byte+1;
@@ -100,12 +102,11 @@ module arp_response (input  ARESET,
         SRC_MAC:
         begin
           if(DATA_VALID_RX == 1) begin
-            THIER_MAC[7+rx_byte*8 -: 8] <= DATA_RX;
-            if (rx_byte == SRC_MAC_SIZE-1) begin
+            if (rx_byte == 0) begin
               rx_byte  <= ETH_TYPE_SIZE-1;
               rx_state <= ETH_TYPE;
             end else begin
-              rx_byte <= rx_byte+1;
+              rx_byte <= rx_byte-1;
             end
           end else begin
             rx_state <= IDLE;
@@ -116,12 +117,11 @@ module arp_response (input  ARESET,
         ETH_TYPE:
         begin
           if(DATA_VALID_RX == 1) begin
-            rx_check <= ETH_TYPE_VALUE[7+rx_byte*8 -: 8];
             // Check for expected value in ARP Request
             if (DATA_RX == ETH_TYPE_VALUE[7+rx_byte*8 -: 8]) begin
               if (rx_byte == 0) begin
                 rx_state <= HRD;
-                rx_byte  <= 4'b0000;
+                rx_byte  <= HRD_SIZE-1;
               end else begin
                 rx_byte <= rx_byte-1;
               end
@@ -140,11 +140,32 @@ module arp_response (input  ARESET,
           if(DATA_VALID_RX == 1) begin
             // Check for expected value in ARP Request
             if (DATA_RX == HRD_VALUE[7+rx_byte*8 -: 8]) begin
-              if (rx_byte == HRD_SIZE-1) begin
-                rx_state <= HLN;
-                rx_byte  <= 4'b0000;
+              if (rx_byte == 0) begin
+                rx_state <= PRO;
+                rx_byte  <= PRO_SIZE-1;
               end else begin
-                rx_byte <= rx_byte+1;
+                rx_byte <= rx_byte-1;
+              end
+            end else begin
+              rx_state <= IDLE;
+              rx_byte  <= 4'b0000;
+            end
+          end else begin
+            rx_state <= IDLE;
+            rx_byte  <= 4'b0000;
+          end
+        end
+
+        PRO:
+        begin
+          if(DATA_VALID_RX == 1) begin
+            // Check for expected value in ARP Request
+            if (DATA_RX == PRO_VALUE[7+rx_byte*8 -: 8]) begin
+              if (rx_byte == 0) begin
+                rx_state <= HLN;
+                rx_byte  <= HLN_SIZE-1;
+              end else begin
+                rx_byte <= rx_byte-1;
               end
             end else begin
               rx_state <= IDLE;
@@ -159,15 +180,17 @@ module arp_response (input  ARESET,
         HLN:
         begin
           if(DATA_VALID_RX == 1) begin
-            if (rx_byte == HLN_SIZE-1) begin
-              rx_byte  <= 4'b0000;
-              // Check for expected value in ARP Request
-              if (DATA_RX == HLN_VALUE[7+rx_byte*8 -: 8])
+            // Check for expected value in ARP Request
+            if (DATA_RX == HLN_VALUE[7+rx_byte*8 -: 8]) begin
+              if (rx_byte == 0) begin
                 rx_state <= PLN;
-              else
-                rx_state <= IDLE;
+                rx_byte  <= PLN_SIZE-1;
+              end else begin
+                rx_byte <= rx_byte-1;
+              end
             end else begin
-              rx_byte <= rx_byte+1;
+              rx_state <= IDLE;
+              rx_byte  <= 4'b0000;
             end
           end else begin
             rx_state <= IDLE;
@@ -178,15 +201,17 @@ module arp_response (input  ARESET,
         PLN:
         begin
           if(DATA_VALID_RX == 1) begin
-            if (rx_byte == PLN_SIZE-1) begin
-              rx_byte  <= 4'b0000;
-              // Check for expected value in ARP Request
-              if (DATA_RX == PLN_VALUE[7+rx_byte*8 -: 8])
+            // Check for expected value in ARP Request
+            if (DATA_RX == PLN_VALUE[7+rx_byte*8 -: 8]) begin
+              if (rx_byte == 0) begin
                 rx_state <= OP;
-              else
-                rx_state <= IDLE;
+                rx_byte  <= OP_SIZE-1;
+              end else begin
+                rx_byte <= rx_byte-1;
+              end
             end else begin
-              rx_byte <= rx_byte+1;
+              rx_state <= IDLE;
+              rx_byte  <= 4'b0000;
             end
           end else begin
             rx_state <= IDLE;
@@ -197,15 +222,17 @@ module arp_response (input  ARESET,
         OP:
         begin
           if(DATA_VALID_RX == 1) begin
-            if (rx_byte == OP_SIZE-1) begin
-              rx_byte  <= 4'b0000;
-              // Check for expected value in ARP Request
-              if (DATA_RX == OP_VALUE[7+rx_byte*8 -: 8])
-                rx_state <= ETH_TYPE;
-              else
+            // Check for expected value in ARP Request
+            if (DATA_RX == OP_VALUE[7+rx_byte*8 -: 8]) begin
+              if (rx_byte == 0) begin
                 rx_state <= SHA;
+                rx_byte  <= SHA_SIZE-1;
+              end else begin
+                rx_byte <= rx_byte-1;
+              end
             end else begin
-              rx_byte <= rx_byte+1;
+              rx_state <= IDLE;
+              rx_byte  <= 4'b0000;
             end
           end else begin
             rx_state <= IDLE;
@@ -216,11 +243,12 @@ module arp_response (input  ARESET,
         SHA:
         begin
           if(DATA_VALID_RX == 1) begin
-            if (rx_byte == SHA_SIZE-1) begin
-              rx_byte  <= 4'b0000;
+            THEIR_MAC[7+rx_byte*8 -: 8] <= DATA_RX;
+            if (rx_byte == 0) begin
+              rx_byte  <= SPA_SIZE-1;
               rx_state <= SPA;
             end else begin
-              rx_byte <= rx_byte+1;
+              rx_byte <= rx_byte-1;
             end
           end else begin
             rx_state <= IDLE;
@@ -231,11 +259,12 @@ module arp_response (input  ARESET,
         SPA:
         begin
           if(DATA_VALID_RX == 1) begin
-            if (rx_byte == SPA_SIZE-1) begin
-              rx_byte  <= 4'b0000;
+            THEIR_IPV4[7+rx_byte*8 -: 8] <= DATA_RX;
+            if (rx_byte == 0) begin
+              rx_byte  <= THA_SIZE-1;
               rx_state <= THA;
             end else begin
-              rx_byte <= rx_byte+1;
+              rx_byte <= rx_byte-1;
             end
           end else begin
             rx_state <= IDLE;
@@ -246,11 +275,11 @@ module arp_response (input  ARESET,
         THA:
         begin
           if(DATA_VALID_RX == 1) begin
-            if (rx_byte == THA_SIZE-1) begin
-              rx_byte  <= 4'b0000;
-              rx_state <= IDLE;
+            if (rx_byte == 0) begin
+              rx_byte  <= TPA_SIZE-1;
+              rx_state <= TPA;
             end else begin
-              rx_byte <= rx_byte+1;
+              rx_byte <= rx_byte-1;
             end
           end else begin
             rx_state <= IDLE;
@@ -262,13 +291,14 @@ module arp_response (input  ARESET,
         begin
           if(DATA_VALID_RX == 1) begin
             // Check for expected value in ARP Request
+            RX_CHECK <= MY_IPV4[7+rx_byte*8 -: 8];
             if (DATA_RX == MY_IPV4[7+rx_byte*8 -: 8]) begin
-              if (rx_byte == TPA_SIZE-1) begin
-                arp_req  <= 1;
+              if (rx_byte == 0) begin
+                rx_state <= IDLE;
                 rx_byte  <= 4'b0000;
-                rx_state <= WAIT_FOR_HS;
+                arp_req  <= 1;
               end else begin
-                rx_byte <= rx_byte+1;
+                rx_byte <= rx_byte-1;
               end
             end else begin
               rx_state <= IDLE;
@@ -316,137 +346,137 @@ module arp_response (input  ARESET,
 
         IDLE:
         begin
+          DATA_VALID_TX <= 0;
           if(arp_req_tx[1] == 1 ) begin
             tx_state      <= DEST_MAC;
-            tx_byte       <= 4'b0000;
-            DATA_VALID_TX <= 1;
+            tx_byte       <= DEST_MAC_SIZE-1;
           end
         end
 
         DEST_MAC:
         begin
-          DATA_TX <= THIER_MAC[7+tx_byte*8 -: 8];
-          if (tx_byte == DEST_MAC_SIZE-1) begin
-            tx_byte  <= 4'b0000;
+          DATA_VALID_TX <= 1;
+          DATA_TX <= THEIR_MAC[7+tx_byte*8 -: 8];
+          if (tx_byte == 0) begin
+            tx_byte  <= SRC_MAC_SIZE-1;
             tx_state <= SRC_MAC;
           end else begin
             // For the first byte, wait for awk
-            if (tx_byte == 0) begin
+            if (tx_byte == DEST_MAC_SIZE-1) begin
               if (DATA_ACK_TX == 1)
-                tx_byte <= tx_byte+1;
+                tx_byte <= tx_byte-1;
             end else
-              tx_byte <= tx_byte+1;
+              tx_byte <= tx_byte-1;
           end
         end
 
         SRC_MAC:
         begin
           DATA_TX <= MY_MAC[7+tx_byte*8 -: 8];
-          if (tx_byte == SRC_MAC_SIZE-1) begin
-            tx_byte  <= 4'b0000;
+          if (tx_byte == 0) begin
+            tx_byte  <= ETH_TYPE_SIZE-1;
             tx_state <= ETH_TYPE;
           end else begin
-            tx_byte <= tx_byte+1;
+            tx_byte <= tx_byte-1;
           end
         end
 
         ETH_TYPE:
         begin
           DATA_TX <= ETH_TYPE_VALUE[7+tx_byte*8 -: 8];
-          if (tx_byte == ETH_TYPE_SIZE-1) begin
-            tx_byte  <= 4'b0000;
+          if (tx_byte == 0) begin
+            tx_byte  <= HRD_SIZE-1;
             tx_state <= HRD;
           end else begin
-            tx_byte <= tx_byte+1;
+            tx_byte <= tx_byte-1;
           end
         end
 
         HRD:
         begin
           DATA_TX <= HRD_VALUE[7+tx_byte*8 -: 8];
-          if (tx_byte == HRD_SIZE-1) begin
-            tx_byte  <= 4'b0000;
+          if (tx_byte == 0) begin
+            tx_byte  <= HLN_SIZE-1;
             tx_state <= HLN;
           end else begin
-            tx_byte <= tx_byte+1;
+            tx_byte <= tx_byte-1;
           end
         end
 
         HLN:
         begin
           DATA_TX <= HLN_VALUE[7+tx_byte*8 -: 8];
-          if (tx_byte == HLN_SIZE-1) begin
-            tx_byte  <= 4'b0000;
+          if (tx_byte == 0) begin
+            tx_byte  <= PLN_SIZE-1;
             tx_state <= PLN;
           end else begin
-            tx_byte <= tx_byte+1;
+            tx_byte <= tx_byte-1;
           end
         end
 
         PLN:
         begin
           DATA_TX <= PLN_VALUE[7+tx_byte*8 -: 8];
-          if (tx_byte == PLN_SIZE-1) begin
-            tx_byte  <= 4'b0000;
+          if (tx_byte == 0) begin
+            tx_byte  <= OP_SIZE-1;
             tx_state <= OP;
           end else begin
-            tx_byte <= tx_byte+1;
+            tx_byte <= tx_byte-1;
           end
         end
 
         OP:
         begin
           DATA_TX <= OP_VALUE[7+tx_byte*8 -: 8];
-          if (tx_byte == OP_SIZE-1) begin
-            tx_byte  <= 4'b0000;
+          if (tx_byte == 0) begin
+            tx_byte  <= SHA_SIZE-1;
             tx_state <= SHA;
           end else begin
-            tx_byte <= tx_byte+1;
+            tx_byte <= tx_byte-1;
           end
         end
 
         SHA:
         begin
           DATA_TX <= MY_MAC[7+tx_byte*8 -: 8];
-          if (tx_byte == SHA_SIZE-1) begin
-            tx_byte  <= 4'b0000;
+          if (tx_byte == 0) begin
+            tx_byte  <= SPA_SIZE-1;
             tx_state <= SPA;
           end else begin
-            tx_byte <= tx_byte+1;
+            tx_byte <= tx_byte-1;
           end
         end
 
         SPA:
         begin
           DATA_TX <= MY_IPV4[7+tx_byte*8 -: 8];
-          if (tx_byte == SPA_SIZE-1) begin
-            tx_byte  <= 4'b0000;
+          if (tx_byte == 0) begin
+            tx_byte  <= THA_SIZE-1;
             tx_state <= THA;
           end else begin
-            tx_byte <= tx_byte+1;
+            tx_byte <= tx_byte-1;
           end
         end
 
         THA:
         begin
-          DATA_TX <= THIER_MAC[7+tx_byte*8 -: 8];
-          if (tx_byte == THA_SIZE-1) begin
-            tx_byte  <= 4'b0000;
+          DATA_TX <= THEIR_MAC[7+tx_byte*8 -: 8];
+          if (tx_byte == 0) begin
+            tx_byte  <= TPA_SIZE-1;
             tx_state <= TPA;
           end else begin
-            tx_byte <= tx_byte+1;
+            tx_byte <= tx_byte-1;
           end
         end
 
         TPA:
         begin
-          DATA_TX <= THIER_IPV4[7+tx_byte*8 -: 8];
-          if (tx_byte == TPA_SIZE-1) begin
+          DATA_TX <= THEIR_IPV4[7+tx_byte*8 -: 8];
+          if (tx_byte == 0) begin
             tx_byte       <= 4'b0000;
             tx_state      <= IDLE;
-            DATA_VALID_TX <= 1'b0;
           end else begin
-            tx_byte <= tx_byte+1;
+            tx_byte <= tx_byte-1;
           end
         end
 

@@ -108,6 +108,20 @@ module arp_response_tb();
     end
   endtask
 
+  task check_arp_request (input [31:0] ipv4);
+    begin
+      @(posedge DATA_VALID_TX);
+      @(posedge CLK_TX);
+      @(posedge CLK_TX);
+      @(posedge CLK_TX);
+      DATA_ACK_TX = 1;
+      @(posedge CLK_TX);
+      DATA_ACK_TX = 0;
+      @(posedge CLK_TX);
+
+    end
+  endtask
+
   arp_response DUT ( .ARESET(ARESET),
                      .MY_MAC(MY_MAC),
                      .MY_IPV4(MY_IPV4),
@@ -145,19 +159,19 @@ module arp_response_tb();
     ARESET    = 1;
     // Assume MAC doesn't provide undefined data
     DATA_VALID_RX = 0;
-    DATA_ACK_TX   = 0;
 
 
     #10;
     ARESET  = 0;
     #10;
-    THEIR_IPV4 = 32'hC0_A8_01_01;
+    THEIR_IPV4 = 32'hC0_A8_01_03;
     send_arp_request(THEIR_IPV4);
   end
 
   // Check
   initial begin
-
+    DATA_ACK_TX   = 0;
+    check_arp_request(THEIR_IPV4);
   end
 
   // Timeout
