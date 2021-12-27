@@ -19,16 +19,16 @@ module arp_response_tb();
   // Number of bytes per field
   localparam DEST_MAC_SIZE = 6;
   localparam SRC_MAC_SIZE  = 6;
-  localparam ETH_TYPE_SIZE = 2;    
-  localparam HRD_SIZE      = 2;    
-  localparam PRO_SIZE      = 2;     
-  localparam HLN_SIZE      = 1;    
-  localparam PLN_SIZE      = 1;    
-  localparam OP_SIZE       = 2;     
-  localparam SHA_SIZE      = 6;     
-  localparam SPA_SIZE      = 4;     
-  localparam THA_SIZE      = 6;    
-  localparam TPA_SIZE      = 4; 
+  localparam ETH_TYPE_SIZE = 2;
+  localparam HRD_SIZE      = 2;
+  localparam PRO_SIZE      = 2;
+  localparam HLN_SIZE      = 1;
+  localparam PLN_SIZE      = 1;
+  localparam OP_SIZE       = 2;
+  localparam SHA_SIZE      = 6;
+  localparam SPA_SIZE      = 4;
+  localparam THA_SIZE      = 6;
+  localparam TPA_SIZE      = 4;
 
   // Expected field values for a compatible Ethernet IPV4 ARP Request
   localparam ETH_TYPE_VALUE      = 16'h0806;
@@ -43,12 +43,12 @@ module arp_response_tb();
     begin
       @(posedge CLK_RX);
       DATA_VALID_RX = 1;
-      //SRC MAC
+      //DEST MAC
       for (integer i = DEST_MAC_SIZE-1; i>=0; i=i-1 ) begin
         DATA_RX = 8'hFF;
         @(posedge CLK_RX);
       end
-      //DEST MAC
+      //SRC MAC
       for (integer i = SRC_MAC_SIZE-1; i>=0; i=i-1 ) begin
         DATA_RX = THEIR_MAC[7+8*i -: 8];
         @(posedge CLK_RX);
@@ -88,14 +88,17 @@ module arp_response_tb();
         DATA_RX = THEIR_MAC[7+8*i -: 8];
         @(posedge CLK_RX);
       end
+      //SPA
       for (integer i = SPA_SIZE-1; i>=0; i=i-1 ) begin
         DATA_RX = THEIR_IPV4[7+8*i -: 8];
         @(posedge CLK_RX);
       end
+      //THA
       for (integer i = THA_SIZE-1; i>=0; i=i-1 ) begin
         DATA_RX = 8'd0;
         @(posedge CLK_RX);
       end
+      //TPA
       for (integer i = TPA_SIZE-1; i>=0; i=i-1 ) begin
         DATA_RX = MY_IPV4[7+8*i -: 8];
         @(posedge CLK_RX);
@@ -104,8 +107,8 @@ module arp_response_tb();
       @(posedge CLK_RX);
     end
   endtask
-    
-  arp_response DUT ( .ARESET(ARESET), 
+
+  arp_response DUT ( .ARESET(ARESET),
                      .MY_MAC(MY_MAC),
                      .MY_IPV4(MY_IPV4),
                      .CLK_RX(CLK_RX),
@@ -121,7 +124,7 @@ module arp_response_tb();
   always begin
     #4;
     CLK_RX = 0;
-    #4; 
+    #4;
     CLK_RX = 1;
   end
 
@@ -143,7 +146,7 @@ module arp_response_tb();
     // Assume MAC doesn't provide undefined data
     DATA_VALID_RX = 0;
     DATA_ACK_TX   = 0;
-    
+
 
     #10;
     ARESET  = 0;
@@ -152,9 +155,9 @@ module arp_response_tb();
     send_arp_request(THEIR_IPV4);
   end
 
-  // Check 
+  // Check
   initial begin
-    
+
   end
 
   // Timeout

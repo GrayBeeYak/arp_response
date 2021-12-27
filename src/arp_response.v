@@ -1,10 +1,10 @@
 /*
 Author: Dennis Grabiak
-Description: Recieves and Parses Ethernet Frame and checks for ARP Request.  
+Description: Recieves and Parses Ethernet Frame and checks for ARP Request.
              If the frame is an ARP Request, an ARP Response is sent.
 */
 
-module arp_response (input  ARESET, 
+module arp_response (input  ARESET,
                      input  [47:0] MY_MAC,
                      input  [31:0] MY_IPV4,
                      input  CLK_RX,
@@ -21,8 +21,8 @@ module arp_response (input  ARESET,
   reg arp_req;
   reg [0:1] arp_req_tx;
   reg DATA_VALID_RX_Q;
-  reg [47:0] THIER_MAC;   
-  reg [31:0] THIER_IPV4;  
+  reg [47:0] THIER_MAC;
+  reg [31:0] THIER_IPV4;
 
   // FSM
   reg [3:0] rx_state;
@@ -45,16 +45,16 @@ module arp_response (input  ARESET,
   // Number of bytes per field
   localparam DEST_MAC_SIZE = 6;
   localparam SRC_MAC_SIZE  = 6;
-  localparam ETH_TYPE_SIZE = 2;    
-  localparam HRD_SIZE      = 2;    
-  localparam PRO_SIZE      = 2;     
-  localparam HLN_SIZE      = 1;    
-  localparam PLN_SIZE      = 1;    
-  localparam OP_SIZE       = 2;     
-  localparam SHA_SIZE      = 6;     
-  localparam SPA_SIZE      = 4;     
-  localparam THA_SIZE      = 6;    
-  localparam TPA_SIZE      = 4; 
+  localparam ETH_TYPE_SIZE = 2;
+  localparam HRD_SIZE      = 2;
+  localparam PRO_SIZE      = 2;
+  localparam HLN_SIZE      = 1;
+  localparam PLN_SIZE      = 1;
+  localparam OP_SIZE       = 2;
+  localparam SHA_SIZE      = 6;
+  localparam SPA_SIZE      = 4;
+  localparam THA_SIZE      = 6;
+  localparam TPA_SIZE      = 4;
 
   // Expected field values for a compatible Ethernet IPV4 ARP Request
   localparam [15:0] ETH_TYPE_VALUE      = 16'h0806;
@@ -77,12 +77,12 @@ module arp_response (input  ARESET,
       // Start parsing frame using edge detect
       case (rx_state)
 
-        IDLE: 
+        IDLE:
         begin
           if(DATA_VALID_RX == 1 && DATA_VALID_RX_Q == 0)
             rx_state <= DEST_MAC;
         end
-        
+
         DEST_MAC:
         begin
           if(DATA_VALID_RX == 1) begin
@@ -92,9 +92,9 @@ module arp_response (input  ARESET,
             end else
               rx_byte <= rx_byte+1;
           end else begin
-            rx_state <= IDLE; 
+            rx_state <= IDLE;
             rx_byte  <= 4'b0000;
-          end      
+          end
         end
 
         SRC_MAC:
@@ -108,9 +108,9 @@ module arp_response (input  ARESET,
               rx_byte <= rx_byte+1;
             end
           end else begin
-            rx_state <= IDLE; 
+            rx_state <= IDLE;
             rx_byte  <= 4'b0000;
-          end      
+          end
         end
 
         ETH_TYPE:
@@ -130,9 +130,9 @@ module arp_response (input  ARESET,
               rx_byte  <= 4'b0000;
             end
           end else begin
-            rx_state <= IDLE; 
+            rx_state <= IDLE;
             rx_byte  <= 4'b0000;
-          end                        
+          end
         end
 
         HRD:
@@ -151,9 +151,9 @@ module arp_response (input  ARESET,
               rx_byte  <= 4'b0000;
             end
           end else begin
-            rx_state <= IDLE; 
+            rx_state <= IDLE;
             rx_byte  <= 4'b0000;
-          end                        
+          end
         end
 
         HLN:
@@ -170,11 +170,11 @@ module arp_response (input  ARESET,
               rx_byte <= rx_byte+1;
             end
           end else begin
-            rx_state <= IDLE; 
+            rx_state <= IDLE;
             rx_byte  <= 4'b0000;
-          end                        
+          end
         end
-        
+
         PLN:
         begin
           if(DATA_VALID_RX == 1) begin
@@ -189,11 +189,11 @@ module arp_response (input  ARESET,
               rx_byte <= rx_byte+1;
             end
           end else begin
-            rx_state <= IDLE; 
+            rx_state <= IDLE;
             rx_byte  <= 4'b0000;
-          end                        
+          end
         end
-        
+
         OP:
         begin
           if(DATA_VALID_RX == 1) begin
@@ -208,11 +208,11 @@ module arp_response (input  ARESET,
               rx_byte <= rx_byte+1;
             end
           end else begin
-            rx_state <= IDLE; 
+            rx_state <= IDLE;
             rx_byte  <= 4'b0000;
-          end                        
+          end
         end
-        
+
         SHA:
         begin
           if(DATA_VALID_RX == 1) begin
@@ -223,11 +223,11 @@ module arp_response (input  ARESET,
               rx_byte <= rx_byte+1;
             end
           end else begin
-            rx_state <= IDLE; 
+            rx_state <= IDLE;
             rx_byte  <= 4'b0000;
-          end                        
+          end
         end
-        
+
         SPA:
         begin
           if(DATA_VALID_RX == 1) begin
@@ -238,11 +238,11 @@ module arp_response (input  ARESET,
               rx_byte <= rx_byte+1;
             end
           end else begin
-            rx_state <= IDLE; 
+            rx_state <= IDLE;
             rx_byte  <= 4'b0000;
-          end                        
+          end
         end
-        
+
         THA:
         begin
           if(DATA_VALID_RX == 1) begin
@@ -253,11 +253,11 @@ module arp_response (input  ARESET,
               rx_byte <= rx_byte+1;
             end
           end else begin
-            rx_state <= IDLE; 
+            rx_state <= IDLE;
             rx_byte  <= 4'b0000;
-          end                        
+          end
         end
-        
+
         TPA:
         begin
           if(DATA_VALID_RX == 1) begin
@@ -275,9 +275,9 @@ module arp_response (input  ARESET,
               rx_byte  <= 4'b0000;
             end
           end else begin
-            rx_state <= IDLE; 
+            rx_state <= IDLE;
             rx_byte  <= 4'b0000;
-          end                  
+          end
         end
 
         WAIT_FOR_HS:
@@ -286,7 +286,7 @@ module arp_response (input  ARESET,
           rx_byte  <= 4'b0000;
         end
 
-        default: 
+        default:
           rx_state <= IDLE;
 
       endcase
@@ -314,7 +314,7 @@ module arp_response (input  ARESET,
     end else begin
       case (tx_state)
 
-        IDLE: 
+        IDLE:
         begin
           if(arp_req_tx[1] == 1 ) begin
             tx_state      <= DEST_MAC;
@@ -322,7 +322,7 @@ module arp_response (input  ARESET,
             DATA_VALID_TX <= 1;
           end
         end
-        
+
         DEST_MAC:
         begin
           DATA_TX <= THIER_MAC[7+tx_byte*8 -: 8];
@@ -332,11 +332,11 @@ module arp_response (input  ARESET,
           end else begin
             // For the first byte, wait for awk
             if (tx_byte == 0) begin
-              if (DATA_ACK_TX == 1) 
+              if (DATA_ACK_TX == 1)
                 tx_byte <= tx_byte+1;
             end else
               tx_byte <= tx_byte+1;
-          end     
+          end
         end
 
         SRC_MAC:
@@ -347,7 +347,7 @@ module arp_response (input  ARESET,
             tx_state <= ETH_TYPE;
           end else begin
             tx_byte <= tx_byte+1;
-          end       
+          end
         end
 
         ETH_TYPE:
@@ -358,7 +358,7 @@ module arp_response (input  ARESET,
             tx_state <= HRD;
           end else begin
             tx_byte <= tx_byte+1;
-          end                    
+          end
         end
 
         HRD:
@@ -369,7 +369,7 @@ module arp_response (input  ARESET,
             tx_state <= HLN;
           end else begin
             tx_byte <= tx_byte+1;
-          end                          
+          end
         end
 
         HLN:
@@ -380,9 +380,9 @@ module arp_response (input  ARESET,
             tx_state <= PLN;
           end else begin
             tx_byte <= tx_byte+1;
-          end                          
+          end
         end
-        
+
         PLN:
         begin
           DATA_TX <= PLN_VALUE[7+tx_byte*8 -: 8];
@@ -391,9 +391,9 @@ module arp_response (input  ARESET,
             tx_state <= OP;
           end else begin
             tx_byte <= tx_byte+1;
-          end                          
+          end
         end
-        
+
         OP:
         begin
           DATA_TX <= OP_VALUE[7+tx_byte*8 -: 8];
@@ -402,9 +402,9 @@ module arp_response (input  ARESET,
             tx_state <= SHA;
           end else begin
             tx_byte <= tx_byte+1;
-          end                           
+          end
         end
-        
+
         SHA:
         begin
           DATA_TX <= MY_MAC[7+tx_byte*8 -: 8];
@@ -413,9 +413,9 @@ module arp_response (input  ARESET,
             tx_state <= SPA;
           end else begin
             tx_byte <= tx_byte+1;
-          end                          
+          end
         end
-        
+
         SPA:
         begin
           DATA_TX <= MY_IPV4[7+tx_byte*8 -: 8];
@@ -424,9 +424,9 @@ module arp_response (input  ARESET,
             tx_state <= THA;
           end else begin
             tx_byte <= tx_byte+1;
-          end                          
+          end
         end
-        
+
         THA:
         begin
           DATA_TX <= THIER_MAC[7+tx_byte*8 -: 8];
@@ -435,9 +435,9 @@ module arp_response (input  ARESET,
             tx_state <= TPA;
           end else begin
             tx_byte <= tx_byte+1;
-          end                  
+          end
         end
-        
+
         TPA:
         begin
           DATA_TX <= THIER_IPV4[7+tx_byte*8 -: 8];
@@ -447,10 +447,10 @@ module arp_response (input  ARESET,
             DATA_VALID_TX <= 1'b0;
           end else begin
             tx_byte <= tx_byte+1;
-          end                    
+          end
         end
-                          
-        default: 
+
+        default:
           tx_state <= IDLE;
 
       endcase
