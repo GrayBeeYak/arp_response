@@ -14,7 +14,7 @@ Some tcl scripts were added to synthesize and simulate the module using the Viva
 
 1. Open Vivado
 2. `cd {arp_response_repo}/scripts`
-3. `source ./synth.tcl`
+3. `source ./sim.tcl`
 
 ## Design
 
