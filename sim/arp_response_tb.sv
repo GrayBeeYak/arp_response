@@ -227,10 +227,10 @@ module arp_response_tb();
 
     //Send Valid Packet
     send_arp_request(MY_IPV4);
-    repeat (10) @(posedge CLK_TX);
+    repeat (10) @(posedge CLK_RX);
     //Send Invalid Packet
     send_arp_request(32'hDEAD_BEEF);
-    repeat (10) @(posedge CLK_TX);
+    repeat (10) @(posedge CLK_RX);
     //Send Valid Packet
     send_arp_request(MY_IPV4);
   end

@@ -36,26 +36,43 @@
     </head>
     <body class="vscode-body vscode-light">
         <h1 id="arp_response">arp_response</h1>
-<h2 id="scripts">Scripts</h2>
-<p>Some tcl scripts were added to synthesize and simulate the module using the Vivado toolset. This was tested with Vivado 2021.1.</p>
-<h3 id="steps-to-synthesize">Steps to Synthesize</h3>
+<p>The Arp Response module is designed to receive, parse, and check Ethernet frames coming
+from a MAC interface for an ARP Request. If a valid ARP request is detected, an ARP response
+is transmitted.</p>
+<h2 id="scripts">Scripts:</h2>
+<p>Some tcl scripts were added to synthesize and simulate the module using the Vivado toolset.
+This was tested with Vivado 2021.1 and uses the XC7Z020clg400-1 part which is available in the
+web pack without an additional license. If needed, the Part can be changed in the first line
+of the scripts.</p>
+<h3 id="steps-to-synthesize">Steps to Synthesize:</h3>
 <ol>
 <li>Open Vivado</li>
+<li>Run the following commands in the tcl console
+<ol>
 <li><code>cd {arp_response_repo}/scripts</code></li>
 <li><code>source ./synth.tcl</code></li>
 </ol>
-<h3 id="steps-to-simulate">Steps to Simulate</h3>
+</li>
+</ol>
+<h3 id="steps-to-simulate">Steps to Simulate:</h3>
 <ol>
 <li>Open Vivado</li>
+<li>Run the following commands in the tcl console
+<ol>
 <li><code>cd {arp_response_repo}/scripts</code></li>
 <li><code>source ./sim.tcl</code></li>
 </ol>
-<h2 id="design">Design</h2>
+</li>
+</ol>
+<h2 id="design">Design:</h2>
 <p><img src="file:///c:\rtl\arp_response_git\doc\arp_response.png" alt="Design"></p>
-<h3 id="request-state-machine">Request State Machine</h3>
-<p>The RX Data State Machine tracks incoming</p>
-<h3 id="response-state-machine">Response State Machine</h3>
-<h3 id="arp-response-handshake">ARP Response Handshake</h3>
+<h3 id="request-state-machine">Request State Machine:</h3>
+<p>The ARP Request State Machine tracks incoming ethernet frames and checks its contents for an IPV4 arp request. It assumes
+that the frames are bounded by the DATA_VALID_RX signal and that it does not drop midframe.</p>
+<h3 id="arp-response-handshake">ARP Response Handshake:</h3>
+<p>A request and acknowledge handshake is used to pass the requesting machine's stable ipv4 and mac address from the rx clock domain to the tx clock domain.</p>
+<h3 id="response-state-machine">Response State Machine:</h3>
+<p>The Response state machine outputs an arp response to the requesting machine after receiving a valid arp request.</p>
 
     </body>
     </html>

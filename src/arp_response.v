@@ -381,6 +381,7 @@ module arp_response (input      ARESET,
           if(arp_req_tx[1] == 0) begin
             tx_state      <= DEST_MAC;
             tx_byte       <= DEST_MAC_SIZE-1;
+            arp_ack       <= 0;
           end
 
         DEST_MAC:
