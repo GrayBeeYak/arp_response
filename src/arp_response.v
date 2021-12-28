@@ -1,34 +1,40 @@
 /*
 Author: Dennis Grabiak
-Description: Recieves and Parses Ethernet Frame and checks for ARP Request.
+Description: Recieves, parses, and checks Ethernet frame for an ARP Request.
              If the frame is an ARP Request, an ARP Response is sent.
 */
 
-module arp_response (input  ARESET,
-                     input  [47:0] MY_MAC,
-                     input  [31:0] MY_IPV4,
-                     input  CLK_RX,
-                     input  DATA_VALID_RX,
-                     input  [7:0] DATA_RX,
-                     input  CLK_TX,
-                     input  DATA_ACK_TX,
+module arp_response (input      ARESET,
+                     input      [47:0] MY_MAC,
+                     input      [31:0] MY_IPV4,
+                     input      CLK_RX,
+                     input      DATA_VALID_RX,
+                     input      [7:0] DATA_RX,
+                     input      CLK_TX,
+                     input      DATA_ACK_TX,
                      output reg DATA_VALID_TX,
                      output reg [7:0] DATA_TX
                     );
 
-  reg [3:0] rx_byte;
-  reg [3:0] tx_byte;
-  reg arp_req;
-  reg [0:1] arp_req_tx;
+
+  // RX registers
   reg DATA_VALID_RX_Q;
   reg [47:0] THEIR_MAC;
   reg [31:0] THEIR_IPV4;
+  reg [0:1] arp_ack_rx;
+  reg arp_req;
 
-  reg [7:0] RX_CHECK;
+  // TX Registers
+  reg [47:0] their_mac_tx;
+  reg [31:0] their_ipv4_tx;
+  reg [0:1] arp_req_tx;
+  reg arp_ack;
 
   // FSM
   reg [3:0] rx_state;
   reg [3:0] tx_state;
+  reg [3:0] rx_byte;
+  reg [3:0] tx_byte;
   localparam IDLE          = 4'b0000;
   localparam DEST_MAC      = 4'b0001;
   localparam SRC_MAC       = 4'b0010;
@@ -59,7 +65,7 @@ module arp_response (input  ARESET,
   localparam TPA_SIZE      = 4;
 
   // Expected field values for a compatible Ethernet IPV4 ARP Request
-  localparam [15:0] ETH_TYPE_VALUE      = 16'h0806;
+  localparam ETH_TYPE_VALUE      = 16'h0806;
   localparam HRD_VALUE           = 16'h0001;
   localparam PRO_VALUE           = 16'h0800;
   localparam HLN_VALUE           = 8'h06;
@@ -75,12 +81,13 @@ module arp_response (input  ARESET,
       arp_req  <= 0;
     end else begin
       DATA_VALID_RX_Q <= DATA_VALID_RX;
-      // Start parsing frame using edge detect
       case (rx_state)
 
         IDLE:
         begin
-          arp_req       <= 0;
+          arp_req <= 0;
+          // Start parsing frame using edge detect.  FSM assumes frame boundaries using
+          // data_valid.
           if(DATA_VALID_RX == 1 && DATA_VALID_RX_Q == 0)
             rx_state <= DEST_MAC;
         end
@@ -291,10 +298,9 @@ module arp_response (input  ARESET,
         begin
           if(DATA_VALID_RX == 1) begin
             // Check for expected value in ARP Request
-            RX_CHECK <= MY_IPV4[7+rx_byte*8 -: 8];
             if (DATA_RX == MY_IPV4[7+rx_byte*8 -: 8]) begin
               if (rx_byte == 0) begin
-                rx_state <= IDLE;
+                rx_state <= WAIT_FOR_HS;
                 rx_byte  <= 4'b0000;
                 arp_req  <= 1;
               end else begin
@@ -312,18 +318,23 @@ module arp_response (input  ARESET,
 
         WAIT_FOR_HS:
         begin
-          rx_state <= IDLE;
-          rx_byte  <= 4'b0000;
+          if (arp_ack_rx[1] == 1) begin
+            rx_state <= IDLE;
+            rx_byte  <= 4'b0000;
+            arp_req  <= 0;
+          end
         end
 
         default:
+        begin
           rx_state <= IDLE;
-
+          rx_byte  <= 4'b0000;
+        end
       endcase
     end
   end
 
-  // ARP Request CDC
+  // CDC Handshake
   always @ (posedge CLK_TX)
   begin
     if(ARESET)
@@ -334,6 +345,16 @@ module arp_response (input  ARESET,
     end
   end
 
+  always @ (posedge CLK_RX)
+  begin
+    if(ARESET)
+      arp_ack_rx <= 2'b00;
+    else begin
+      arp_ack_rx[0] <= arp_ack;
+      arp_ack_rx[1] <= arp_ack_rx[0];
+    end
+  end
+
   // Send out ARP
   always @ (posedge CLK_TX)
   begin
@@ -341,6 +362,7 @@ module arp_response (input  ARESET,
       DATA_VALID_TX <= 0;
       tx_state      <= IDLE;
       tx_byte       <= 4'b0000;
+      arp_ack       <= 0;
     end else begin
       case (tx_state)
 
@@ -348,15 +370,23 @@ module arp_response (input  ARESET,
         begin
           DATA_VALID_TX <= 0;
           if(arp_req_tx[1] == 1 ) begin
+            tx_state      <= WAIT_FOR_HS;
+            their_ipv4_tx <= THEIR_IPV4;
+            their_mac_tx  <= THEIR_MAC;
+            arp_ack       <= 1;
+          end
+        end
+
+        WAIT_FOR_HS:
+          if(arp_req_tx[1] == 0) begin
             tx_state      <= DEST_MAC;
             tx_byte       <= DEST_MAC_SIZE-1;
           end
-        end
 
         DEST_MAC:
         begin
           DATA_VALID_TX <= 1;
-          DATA_TX <= THEIR_MAC[7+tx_byte*8 -: 8];
+          DATA_TX <= their_mac_tx[7+tx_byte*8 -: 8];
           if (tx_byte == 0) begin
             tx_byte  <= SRC_MAC_SIZE-1;
             tx_state <= SRC_MAC;
@@ -395,6 +425,17 @@ module arp_response (input  ARESET,
         HRD:
         begin
           DATA_TX <= HRD_VALUE[7+tx_byte*8 -: 8];
+          if (tx_byte == 0) begin
+            tx_byte  <= PRO_SIZE-1;
+            tx_state <= PRO;
+          end else begin
+            tx_byte <= tx_byte-1;
+          end
+        end
+
+        PRO:
+        begin
+          DATA_TX <= PRO_VALUE[7+tx_byte*8 -: 8];
           if (tx_byte == 0) begin
             tx_byte  <= HLN_SIZE-1;
             tx_state <= HLN;
@@ -460,7 +501,7 @@ module arp_response (input  ARESET,
 
         THA:
         begin
-          DATA_TX <= THEIR_MAC[7+tx_byte*8 -: 8];
+          DATA_TX <= their_mac_tx[7+tx_byte*8 -: 8];
           if (tx_byte == 0) begin
             tx_byte  <= TPA_SIZE-1;
             tx_state <= TPA;
@@ -471,7 +512,7 @@ module arp_response (input  ARESET,
 
         TPA:
         begin
-          DATA_TX <= THEIR_IPV4[7+tx_byte*8 -: 8];
+          DATA_TX <= their_ipv4_tx[7+tx_byte*8 -: 8];
           if (tx_byte == 0) begin
             tx_byte       <= 4'b0000;
             tx_state      <= IDLE;

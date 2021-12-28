@@ -1,5 +1,6 @@
 config_webtalk -user off
 catch {close_project}
+catch {close_sim}
 create_project -in_memory
 add_files ../src/arp_response.v
 set_part XC7Z020clg400-1

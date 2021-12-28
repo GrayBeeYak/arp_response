@@ -18,6 +18,8 @@ Some tcl scripts were added to synthesize and simulate the module using the Viva
 
 ## Design
 
+![Design](./doc/arp_response.png)
+
 ### Request State Machine
 
 The RX Data State Machine tracks incoming
